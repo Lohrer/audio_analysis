@@ -3,8 +3,8 @@ from scipy.fftpack import next_fast_len
 from numpy.fft import rfft, irfft
 from numpy import argmax, mean, log, concatenate, zeros
 import numpy as np
-from waveform_analysis._common import rms_flat, parabolic
-from waveform_analysis import A_weight
+from _common import rms_flat, parabolic
+from weighting_filters import ABC_weighting
 
 
 # This requires accurately measuring frequency component amplitudes, so use a
@@ -41,7 +41,7 @@ flattops = {
     }
 
 
-def THDN(signal, fs, weight=None):
+def THDN(signal, fs, weight=None, plot=False):
     """Measure the THD+N for a signal and print the results
 
     Prints the estimated fundamental frequency and the measured THD+N.  This is
@@ -55,6 +55,7 @@ def THDN(signal, fs, weight=None):
     TODO: Or report all of the above in a dictionary?
 
     """
+
     # Get rid of DC and window the signal
     signal = np.asarray(signal) + 0.0  # Float-like array
     # TODO: Do this in the frequency domain, and take any skirts with it?
@@ -62,7 +63,6 @@ def THDN(signal, fs, weight=None):
 
     window = general_cosine(len(signal), flattops['HFT248D'])
     windowed = signal * window
-    del signal
 
     # Zero pad to nearest power of two
     new_len = next_fast_len(len(windowed))
@@ -78,10 +78,10 @@ def THDN(signal, fs, weight=None):
     frequency = fs * (true_i / len(windowed))
 
     # Filter out fundamental by throwing away values ±10%
+    # TODO: Zeroing FFT bins is bad
     lowermin = int(true_i * 0.9)
     uppermin = int(true_i * 1.1)
     f[lowermin: uppermin] = 0
-    # TODO: Zeroing FFT bins is bad
 
     # Transform noise back into the time domain and measure it
     noise = irfft(f)
@@ -93,13 +93,24 @@ def THDN(signal, fs, weight=None):
         # Apply A-weighting to residual noise (Not normally used for
         # distortion, but used to measure dynamic range with -60 dBFS signal,
         # for instance)
-        noise = A_weight(noise, fs)
+        noise = ABC_weighting.A_weight(noise, fs)
         # TODO: filtfilt? tail end of filter?
     else:
         raise ValueError('Weighting not understood')
 
     # TODO: Return a dict or list of frequency, THD+N?
-    return rms_flat(noise) / total_rms
+    thdn_val = rms_flat(noise) / total_rms
+    print(f'Fundamental frequency={frequency}, THDN={thdn_val}')
+
+    if plot:
+        import matplotlib.pyplot as plt
+        plt.plot(signal, label='Signal with DC removed')
+        plt.plot(windowed, label='Windowed signal')
+        plt.plot(noise, label='Noise signal')
+        plt.legend()
+        plt.xlabel('sample')
+        plt.show()
+    return thdn_val
 
 
 def THD(signal, fs):

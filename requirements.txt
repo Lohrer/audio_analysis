@@ -1,6 +1,7 @@
+argparse
+codecov
+matplotlib
 numpy
-scipy
-
 pytest
 pytest-cov
-codecov
+scipy

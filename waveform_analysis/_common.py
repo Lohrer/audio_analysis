@@ -90,6 +90,9 @@ def analyze_channels(filename, function):
     """
     signal, sample_rate, channels = load(filename)
     print('Analyzing "' + filename + '"...')
+    print(f'  channels   = {channels}')
+    print(f'  sample_rate= {sample_rate}')
+    print(f'  len(signal)= {len(signal)}')
 
     if channels == 1:
         # Monaural
@@ -101,7 +104,7 @@ def analyze_channels(filename, function):
             function(signal[:, 0], sample_rate)
         else:
             print('-- Left channel --')
-            function(signal[:, 0], sample_rate)
+            function(signal[:, 0], sample_rate, plot=True)
             print('-- Right channel --')
             function(signal[:, 1], sample_rate)
     else:
